@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  macOS launchd config — runs fetch-crosswords.sh once per hour.
+  The script uses a stamp file internally so puzzles are only downloaded
+  once per day, even if your Mac wakes up multiple times.
+
+  Install:
+    1. Edit the paths below to match your setup.
+    2. Copy to ~/Library/LaunchAgents/
+    3. launchctl load ~/Library/LaunchAgents/com.crosswords.fetch.plist
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.crosswords.fetch</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <!-- Update this path to where you cloned crossword-fetch -->
+        <string>/Users/YOURUSER/crossword-fetch/fetch-crosswords.sh</string>
+    </array>
+    <key>StartInterval</key>
+    <integer>3600</integer>
+    <key>StandardOutPath</key>
+    <string>/Users/YOURUSER/Crosswords/logs/launchd-stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/YOURUSER/Crosswords/logs/launchd-stderr.log</string>
+    <key>RunAtLoad</key>
+    <false/>
+</dict>
+</plist>

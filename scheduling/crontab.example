@@ -1,0 +1,9 @@
+# Run fetch-crosswords.sh once per hour.
+# The script uses a stamp file internally so puzzles are only
+# downloaded once per day, even if this fires multiple times.
+#
+# Edit the path below, then install with:
+#   crontab -e
+# and paste this line (without the leading #):
+
+# 0 * * * * /path/to/crossword-fetch/fetch-crosswords.sh

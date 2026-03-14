@@ -92,6 +92,7 @@ Puzzles are organized into monthly folders with the date baked into each filenam
 ├── 2026-01/
 │   ├── 2026-01-01 - NY Times - Thursday, January 01, 2026 - Topher Booth.puz
 │   ├── 2026-01-01 - Puzzmo - Blast Off! - Willa.puz
+│   ├── 2026-01-01 - USA Today - Untitled - Unlisted.puz
 │   └── ...
 ├── 2026-02/
 ├── 2026-03/
@@ -100,7 +101,7 @@ Puzzles are organized into monthly folders with the date baked into each filenam
 
 Filename format: `YYYY-MM-DD - Publisher - Title - Author.puz`
 
-If a puzzle has no title in its metadata, `Untitled` is used. If no author, `Unlisted`.
+If a puzzle has no title in its metadata, `Untitled` is used. If no author, `Unlisted` (as in the USA Today example above).
 
 ## Renaming your library
 

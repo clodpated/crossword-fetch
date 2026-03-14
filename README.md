@@ -70,18 +70,89 @@ Automated daily `.puz` crossword puzzle downloader. A companion to [xword-dl](ht
    ```
    Check `~/Crosswords/` for today's puzzles. The script finds `fetch-extras.py` relative to its own location, so both scripts must stay in the same directory.
 
-4. **Schedule it** — pick your platform:
+4. **Schedule it** — see [Scheduling](#scheduling) below for cron, launchd, or systemd setup.
 
-   **cron (Linux/macOS):**
-   ```
-   0 * * * * /path/to/crossword-fetch/fetch-crosswords.sh
-   ```
+## Scheduling
 
-   **launchd (macOS):** Edit `scheduling/com.crosswords.fetch.plist` with your paths, then:
+The script is designed to run hourly. It uses a stamp file (`logs/.fetched-YYYY-MM-DD`) so puzzles are only downloaded once per day — extra runs are no-ops. Running hourly means you catch puzzles regardless of when each publisher drops theirs.
+
+### cron (Linux / macOS)
+
+The simplest option. Open your crontab:
+
+```bash
+crontab -e
+```
+
+Add this line (update the path):
+
+```
+0 * * * * /path/to/crossword-fetch/fetch-crosswords.sh
+```
+
+This runs at the top of every hour. Output goes to `~/Crosswords/logs/YYYY-MM-DD.log`.
+
+> **Tip:** If your machine might be off at midnight, hourly is better than a single daily run — the stamp file prevents duplicate downloads.
+
+### launchd (macOS)
+
+Better than cron on a Mac — launchd fires missed jobs after waking from sleep.
+
+1. Edit `scheduling/com.crosswords.fetch.plist` and replace `/Users/YOURUSER/` with your actual home directory path in all three places.
+
+2. Copy it into place and load it:
    ```bash
    cp scheduling/com.crosswords.fetch.plist ~/Library/LaunchAgents/
    launchctl load ~/Library/LaunchAgents/com.crosswords.fetch.plist
    ```
+
+3. Verify it's loaded:
+   ```bash
+   launchctl list | grep crosswords
+   ```
+
+To unload later: `launchctl unload ~/Library/LaunchAgents/com.crosswords.fetch.plist`
+
+### systemd timer (Linux)
+
+Create two files:
+
+**`~/.config/systemd/user/crossword-fetch.service`**
+```ini
+[Unit]
+Description=Fetch daily crossword puzzles
+
+[Service]
+Type=oneshot
+ExecStart=/path/to/crossword-fetch/fetch-crosswords.sh
+```
+
+**`~/.config/systemd/user/crossword-fetch.timer`**
+```ini
+[Unit]
+Description=Run crossword-fetch hourly
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+Enable and start:
+```bash
+systemctl --user daemon-reload
+systemctl --user enable --now crossword-fetch.timer
+```
+
+Check status:
+```bash
+systemctl --user status crossword-fetch.timer
+journalctl --user -u crossword-fetch.service -n 20
+```
+
+`Persistent=true` means systemd will run a missed job after boot, similar to launchd on macOS.
 
 ## Folder structure and filenames
 

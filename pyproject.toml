@@ -1,0 +1,7 @@
+[project]
+name = "crossword-fetch"
+version = "0.1.0"
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

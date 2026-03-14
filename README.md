@@ -99,7 +99,7 @@ Add this line (update the path):
 
 This runs at the top of every hour. Output goes to `~/Crosswords/logs/YYYY-MM-DD.log`.
 
-> **Tip:** If your machine might be off at midnight, hourly is better than a single daily run — the stamp file prevents duplicate downloads.
+> **Tip:** If your machine might be off at midnight, hourly is better than a single daily run. Already-downloaded sources are skipped instantly, so extra runs are cheap.
 
 ### launchd (macOS)
 

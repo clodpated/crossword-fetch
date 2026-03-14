@@ -1,5 +1,4 @@
 logs/
 *.puz
-.fetched*
 .DS_Store
 __pycache__/

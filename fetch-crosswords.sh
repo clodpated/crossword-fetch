@@ -2,10 +2,10 @@
 #
 # fetch-crosswords.sh — Download the latest .puz files from all non-cryptic sources
 #
-# Puzzles are saved to ~/Crosswords/YYYY-MM-DD/ organized by date.
+# Puzzles are saved to ~/Crosswords/YYYY-MM/ organized by month.
 # A log is written to ~/Crosswords/logs/
 #
-# Designed to run hourly via launchd. Uses a stamp file to ensure
+# Designed to run hourly via cron/launchd. Uses a stamp file to ensure
 # downloads are only attempted once per day.
 
 set -euo pipefail
@@ -13,10 +13,11 @@ set -euo pipefail
 export PATH="$HOME/.local/bin:$PATH"
 
 DATE=$(date +%Y-%m-%d)
-OUTDIR="$HOME/Crosswords/$DATE"
+MONTH=$(date +%Y-%m)
+OUTDIR="$HOME/Crosswords/$MONTH"
 LOGDIR="$HOME/Crosswords/logs"
 LOGFILE="$LOGDIR/$DATE.log"
-STAMP="$OUTDIR/.fetched"
+STAMP="$LOGDIR/.fetched-$DATE"
 
 mkdir -p "$OUTDIR" "$LOGDIR"
 
@@ -83,12 +84,12 @@ download club  "Crossword Club"
 
 # --- Extras (Universal daily/Sunday + WSJ via fetch-extras.py) ---
 log "Running fetch-extras.py..."
-uv run --with requests --with puzpy "$HOME/Crosswords/fetch-extras.py" --date "$DATE" >> "$LOGFILE" 2>&1
+uv run --with requests --with puzpy "$HOME/Crosswords/fetch-extras.py" --date "$DATE" --outdir "$OUTDIR" >> "$LOGFILE" 2>&1
 
 log "=== xword-dl fetch complete ==="
 
 # Clean up filenames: fill in placeholders for empty title/author tokens
-for f in "$OUTDIR"/*.puz; do
+for f in "$OUTDIR"/${DATE}*.puz; do
     [ -f "$f" ] || continue
     name=$(basename "$f")
     # Pattern: "date - prefix - TITLE - AUTHOR.puz"
@@ -106,11 +107,11 @@ for f in "$OUTDIR"/*.puz; do
     fi
 done
 
-# Count results
-PUZZLES=$(find "$OUTDIR" -name '*.puz' 2>/dev/null | wc -l | tr -d ' ')
-log "Downloaded $PUZZLES puzzle(s) to $OUTDIR"
+# Count today's results
+PUZZLES=$(find "$OUTDIR" -name "${DATE}*\.puz" 2>/dev/null | wc -l | tr -d ' ')
+log "Downloaded $PUZZLES puzzle(s) for $DATE"
 
 # Mark today as fetched so hourly runs skip
 touch "$STAMP"
 
-echo "Downloaded $PUZZLES puzzle(s) to $OUTDIR"
+echo "Downloaded $PUZZLES puzzle(s) for $DATE"

@@ -211,7 +211,7 @@ def main():
     args = parser.parse_args()
 
     dt = datetime.strptime(args.date, "%Y-%m-%d") if args.date else datetime.today()
-    outdir = Path(args.outdir) if args.outdir else Path.home() / "Crosswords" / f"{dt:%Y-%m-%d}"
+    outdir = Path(args.outdir) if args.outdir else Path.home() / "Crosswords" / f"{dt:%Y-%m}"
     outdir.mkdir(parents=True, exist_ok=True)
 
     log(f"=== fetch-extras for {dt:%Y-%m-%d} ===")

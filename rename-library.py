@@ -61,13 +61,14 @@ def safe_filename(s):
     return re.sub(r'[/:*?"<>|]', '', s).strip()
 
 
-def extract_code(filename):
-    """Extract the source code from old-format filenames like 'nyt-20260113.puz'."""
-    # Match: code-YYYYMMDD.puz  (code may contain letters/digits)
-    m = re.match(r'^([a-z]+)-\d{8}\.puz$', filename)
+def extract_code_and_date(filename):
+    """Extract source code and date from old-format filenames like 'nyt-20260113.puz'."""
+    m = re.match(r'^([a-z]+)-(\d{4})(\d{2})(\d{2})\.puz$', filename)
     if m:
-        return m.group(1)
-    return None
+        code = m.group(1)
+        date_str = f"{m.group(2)}-{m.group(3)}-{m.group(4)}"
+        return code, date_str
+    return None, None
 
 
 def extract_prefix_from_new_format(filename):
@@ -93,11 +94,16 @@ def build_new_name(date_str, prefix, title, author):
     return safe_filename(" - ".join(parts)) + ".puz"
 
 
-def get_date_from_parent(filepath):
-    """Get the YYYY-MM-DD date from the parent folder name."""
-    parent = filepath.parent.name
-    if re.match(r'^\d{4}-\d{2}-\d{2}$', parent):
-        return parent
+def extract_date_from_filename(filename):
+    """Extract YYYY-MM-DD date from either old or new format filenames."""
+    # New format: "2026-03-13 - Publisher - ..."
+    m = re.match(r'^(\d{4}-\d{2}-\d{2})\s', filename)
+    if m:
+        return m.group(1)
+    # Old format: "code-YYYYMMDD.puz"
+    m = re.match(r'^[a-z]+-(\d{4})(\d{2})(\d{2})\.puz$', filename)
+    if m:
+        return f"{m.group(1)}-{m.group(2)}-{m.group(3)}"
     return None
 
 
@@ -121,20 +127,15 @@ def main():
         if f.name.startswith("."):
             continue
 
-        date_str = get_date_from_parent(f)
-        if not date_str:
-            print(f"  SKIP (no date folder): {f}")
-            skipped += 1
-            continue
-
-        # Determine publisher prefix
-        code = extract_code(f.name)
+        # Determine publisher prefix and date from filename
+        code, date_str = extract_code_and_date(f.name)
         if code and code in CODE_TO_PREFIX:
             prefix = CODE_TO_PREFIX[code]
         else:
             # Maybe already in new format
             prefix = extract_prefix_from_new_format(f.name)
-            if not prefix:
+            date_str = extract_date_from_filename(f.name)
+            if not prefix or not date_str:
                 print(f"  SKIP (unknown format): {f.name}")
                 skipped += 1
                 continue

@@ -4,7 +4,7 @@ Automated daily `.puz` crossword puzzle downloader. A companion to [xword-dl](ht
 
 ## What it does
 
-- **`fetch-crosswords.sh`** — Runs daily (via cron, launchd, etc.), downloads puzzles from all sources into date-organized folders (`~/Crosswords/2026-03-13/`). Uses a stamp file so it only downloads once per day even if triggered hourly.
+- **`fetch-crosswords.sh`** — Runs daily (via cron, launchd, etc.), downloads puzzles from all sources into monthly folders (`~/Crosswords/2026-03/`). Uses a stamp file so it only downloads once per day even if triggered hourly.
 - **`fetch-extras.py`** — Downloads puzzles that xword-dl can't reliably handle: Universal (API user-agent workaround), WSJ, and Universal Sunday.
 - **`rename-library.py`** — Bulk-renames `.puz` files to a consistent human-readable format.
 
@@ -83,22 +83,24 @@ Automated daily `.puz` crossword puzzle downloader. A companion to [xword-dl](ht
    launchctl load ~/Library/LaunchAgents/com.crosswords.fetch.plist
    ```
 
-## Filename convention
+## Folder structure and filenames
 
-Puzzles are saved as:
+Puzzles are organized into monthly folders with the date baked into each filename:
+
 ```
-YYYY-MM-DD - Publisher - Title - Author.puz
+~/Crosswords/
+├── 2026-01/
+│   ├── 2026-01-01 - NY Times - Thursday, January 01, 2026 - Topher Booth.puz
+│   ├── 2026-01-01 - Puzzmo - Blast Off! - Willa.puz
+│   └── ...
+├── 2026-02/
+├── 2026-03/
+└── logs/
 ```
+
+Filename format: `YYYY-MM-DD - Publisher - Title - Author.puz`
 
 If a puzzle has no title in its metadata, `Untitled` is used. If no author, `Unlisted`.
-
-Examples:
-```
-2026-03-13 - NY Times - Friday, March 13, 2026 - James McCarron and Rachel Souza.puz
-2026-03-13 - Puzzmo - Within Eyeshot - bewilderingly.puz
-2026-03-13 - Universal - Beast Mode - By Greg Snitkin and Rafael Musa  Ed. David Steinberg.puz
-2026-03-13 - Vox - Untitled - Andrew J. Ries.puz
-```
 
 ## Renaming your library
 
@@ -123,7 +125,13 @@ The `fetch-extras.py` script runs independently and can be called on its own:
 uv run --with requests --with puzpy python3 fetch-extras.py --date 2026-03-13
 ```
 
-## Why fetch-extras.py exists
+## Gaps this fills
+
+### NYT Midi
+
+The NYT Midi crossword launched in early 2026 but isn't yet supported in a released version of xword-dl. This setup includes the `nytd` downloader from [PR #319](https://github.com/thisisparker/xword-dl/pull/319), which adds it as a subclass of the existing NYT downloader. If you install xword-dl from git (as recommended above), you can apply the patch manually — see the PR for the one-file change to `newyorktimesdownloader.py`.
+
+### Universal, WSJ, Universal Sunday (fetch-extras.py)
 
 Three sources need special handling that xword-dl doesn't provide:
 

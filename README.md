@@ -6,6 +6,7 @@ Automated daily `.puz` crossword puzzle downloader. A companion to [xword-dl](ht
 
 - **`fetch-crosswords.sh`** — Runs daily (via cron, launchd, etc.), downloads puzzles from all sources into monthly folders (`~/Crosswords/2026-03/`). Uses a stamp file so it only downloads once per day even if triggered hourly.
 - **`fetch-extras.py`** — Downloads puzzles that xword-dl can't reliably handle: Universal (API user-agent workaround), WSJ, and Universal Sunday.
+- **`backfill.sh`** — Downloads historical puzzles for a date range. Skips anything already downloaded.
 - **`rename-library.py`** — Bulk-renames `.puz` files to a consistent human-readable format.
 
 ## Sources
@@ -173,6 +174,22 @@ Puzzles are organized into monthly folders with the date baked into each filenam
 Filename format: `YYYY-MM-DD - Publisher - Title - Author.puz`
 
 If a puzzle has no title in its metadata, `Untitled` is used. If no author, `Unlisted` (as in the USA Today example above).
+
+## Backfilling
+
+To download puzzles for a range of past dates:
+
+```bash
+./backfill.sh --start 2026-01-01 --end 2026-03-01
+```
+
+This iterates day by day, downloading from all sources that support date-based fetching (17 xword-dl sources plus Universal, WSJ, and Universal Sunday via `fetch-extras.py`). It skips any date+source that already has a `.puz` file, so it's safe to re-run if interrupted.
+
+Sources that only support `--latest` (Billboard, Daily Beast, Vox, The Walrus) are excluded — they can't fetch by date.
+
+Progress is logged to `~/Crosswords/logs/backfill.log`.
+
+> **Tip:** Backfilling months of puzzles takes a while. The script sleeps 1 second between downloads to avoid hammering servers. If it gets interrupted, just run it again — it picks up where it left off.
 
 ## Renaming your library
 

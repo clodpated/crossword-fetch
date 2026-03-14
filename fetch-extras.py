@@ -13,7 +13,6 @@ Usage:
 
 import argparse
 import re
-import sys
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import unquote
@@ -21,6 +20,8 @@ from urllib.parse import unquote
 import puz
 import requests
 
+# Browser user-agent — some APIs reject Python's default UA.
+# Update the Chrome version periodically to avoid stale-UA rejections.
 UA = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -50,10 +51,13 @@ def puz_filename(dt, prefix, title, author):
     return safe_filename(" - ".join(parts)) + ".puz"
 
 
-def file_exists_for(outdir, prefix):
-    """Check if any .puz file matching this prefix already exists in outdir."""
+def file_exists_for(outdir, dt, prefix):
+    """Check if a .puz file for this date+prefix already exists in outdir."""
+    date_str = f"{dt:%Y-%m-%d}"
     for f in outdir.iterdir():
-        if f.suffix == ".puz" and f" {prefix} -" in f.name:
+        if (f.suffix == ".puz"
+                and f.name.startswith(date_str)
+                and f" {prefix} -" in f.name):
             return True
     return False
 
@@ -70,7 +74,7 @@ UNI_BLOB = (
 
 def fetch_universal_api(dt, outdir):
     """Download the Universal crossword for a given date via the JSON API."""
-    if file_exists_for(outdir, "Universal"):
+    if file_exists_for(outdir, dt, "Universal"):
         log("  SKIP Universal (already exists)")
         return True
 
@@ -102,7 +106,7 @@ def fetch_universal_api(dt, outdir):
         across = xw["AcrossClue"].splitlines()
         down = xw["DownClue"].splitlines()
         clues = sorted(
-            [{"num": c.split("|")[0], "clue": c.split("|")[1]} for c in across + down],
+            [{"num": c.split("|", 1)[0], "clue": c.split("|", 1)[1]} for c in across + down],
             key=lambda x: int(x["num"]),
         )
         puzzle.clues = [c["clue"] for c in clues]
@@ -130,6 +134,7 @@ HERBACH_BASE = "https://herbach.dnsalias.com"
 
 HERBACH_SOURCES = {
     "wsj":    ("WSJ",              "/wsj/wsj{ymd}.puz"),
+    "uc":     ("Universal",        "/uc/uc{ymd}.puz"),
     "ucsun":  ("Universal Sunday", "/uc/ucs{ymd}.puz"),
 }
 
@@ -138,7 +143,7 @@ def fetch_herbach(key, dt, outdir):
     """Download a .puz file from herbach.dnsalias.com and rename with metadata."""
     label, path_tmpl = HERBACH_SOURCES[key]
 
-    if file_exists_for(outdir, label):
+    if file_exists_for(outdir, dt, label):
         log(f"  SKIP {label} (already exists)")
         return True
 
@@ -171,36 +176,6 @@ def fetch_herbach(key, dt, outdir):
         return False
 
 
-def fetch_universal_herbach(dt, outdir):
-    """Fallback: download Universal daily .puz directly if API failed."""
-    if file_exists_for(outdir, "Universal"):
-        return True
-
-    ymd = dt.strftime("%y%m%d")
-    url = f"{HERBACH_BASE}/uc/uc{ymd}.puz"
-
-    try:
-        r = SESSION.get(url, timeout=15)
-        if r.status_code == 200 and len(r.content) > 100:
-            tmp = outdir / ".tmp-uni.puz"
-            tmp.write_bytes(r.content)
-            try:
-                p = puz.read(str(tmp))
-                fname = puz_filename(dt, "Universal", p.title, p.author)
-            except Exception:
-                fname = puz_filename(dt, "Universal", "", "")
-            final = outdir / fname
-            tmp.rename(final)
-            log(f"  OK Universal (herbach fallback) → {final.name}")
-            return True
-        else:
-            log(f"  FAILED Universal herbach fallback (HTTP {r.status_code})")
-            return False
-    except Exception as e:
-        log(f"  FAILED Universal herbach fallback: {e}")
-        return False
-
-
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -216,9 +191,9 @@ def main():
 
     log(f"=== fetch-extras for {dt:%Y-%m-%d} ===")
 
-    # Universal daily: try API first, fall back to herbach
+    # Universal daily: try API first, fall back to herbach .puz
     if not fetch_universal_api(dt, outdir):
-        fetch_universal_herbach(dt, outdir)
+        fetch_herbach("uc", dt, outdir)
 
     # WSJ daily (Mon-Sat, no Sunday puzzle)
     fetch_herbach("wsj", dt, outdir)

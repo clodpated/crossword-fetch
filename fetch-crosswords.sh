@@ -12,6 +12,7 @@ set -euo pipefail
 
 export PATH="$HOME/.local/bin:$PATH"
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 DATE=$(date +%Y-%m-%d)
 MONTH=$(date +%Y-%m)
 OUTDIR="$HOME/Crosswords/$MONTH"
@@ -33,15 +34,18 @@ log() {
 download() {
     local code="$1"
     local label="$2"
-    local extra="${3:-}"
+    shift 2
+    local -a extra=("$@")
+
+    local -a cmd=(xword-dl "$code" "${extra[@]}" -o "$OUTDIR/%Y-%m-%d - %prefix - %title - %author")
 
     log "Fetching $label ($code)..."
-    if eval xword-dl "$code" $extra -o "$OUTDIR/%Y-%m-%d - %prefix - %title - %author" >> "$LOGFILE" 2>&1; then
+    if "${cmd[@]}" >> "$LOGFILE" 2>&1; then
         log "  OK: $label"
     else
         log "  FAILED: $label — retrying in 5s..."
         sleep 5
-        if eval xword-dl "$code" $extra -o "$OUTDIR/%Y-%m-%d - %prefix - %title - %author" >> "$LOGFILE" 2>&1; then
+        if "${cmd[@]}" >> "$LOGFILE" 2>&1; then
             log "  OK: $label (retry)"
         else
             log "  FAILED: $label (gave up)"
@@ -56,7 +60,7 @@ log "=== xword-dl fetch started ==="
 download nyt   "New York Times"
 download nytm  "New York Times Mini"
 download nytd  "New York Times Midi"
-download nytv  "New York Times Variety" "-d today"
+download nytv  "New York Times Variety" -d today
 
 # --- Major US Dailies (free) ---
 download lat   "Los Angeles Times"
@@ -84,7 +88,11 @@ download club  "Crossword Club"
 
 # --- Extras (Universal daily/Sunday + WSJ via fetch-extras.py) ---
 log "Running fetch-extras.py..."
-uv run --with requests --with puzpy "$HOME/Crosswords/fetch-extras.py" --date "$DATE" --outdir "$OUTDIR" >> "$LOGFILE" 2>&1
+if uv run --with requests --with puzpy "$SCRIPT_DIR/fetch-extras.py" --date "$DATE" --outdir "$OUTDIR" >> "$LOGFILE" 2>&1; then
+    log "  OK: fetch-extras.py"
+else
+    log "  FAILED: fetch-extras.py"
+fi
 
 log "=== xword-dl fetch complete ==="
 
@@ -108,10 +116,13 @@ for f in "$OUTDIR"/${DATE}*.puz; do
 done
 
 # Count today's results
-PUZZLES=$(find "$OUTDIR" -name "${DATE}*\.puz" 2>/dev/null | wc -l | tr -d ' ')
+PUZZLES=$(find "$OUTDIR" -name "${DATE} -*\.puz" 2>/dev/null | wc -l | tr -d ' ')
 log "Downloaded $PUZZLES puzzle(s) for $DATE"
 
 # Mark today as fetched so hourly runs skip
 touch "$STAMP"
+
+# Clean up stamp files older than 30 days
+find "$LOGDIR" -name '.fetched-*' -mtime +30 -delete 2>/dev/null
 
 echo "Downloaded $PUZZLES puzzle(s) for $DATE"

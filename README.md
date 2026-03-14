@@ -50,7 +50,7 @@ Automated daily `.puz` crossword puzzle downloader. A companion to [xword-dl](ht
 
 1. **Clone the repo:**
    ```bash
-   git clone https://github.com/YOURUSER/crossword-fetch.git
+   git clone https://github.com/clodpated/crossword-fetch.git
    cd crossword-fetch
    ```
 
@@ -68,7 +68,7 @@ Automated daily `.puz` crossword puzzle downloader. A companion to [xword-dl](ht
    ```bash
    ./fetch-crosswords.sh
    ```
-   Check `~/Crosswords/` for today's puzzles.
+   Check `~/Crosswords/` for today's puzzles. The script finds `fetch-extras.py` relative to its own location, so both scripts must stay in the same directory.
 
 4. **Schedule it** — pick your platform:
 

@@ -9,15 +9,15 @@ Uses "Untitled" for missing title, "Unlisted" for missing author.
 
 Determines the publisher prefix from either:
   - The old code-based filename (e.g. nyt-20260113.puz → "NY Times")
-  - The folder date + .puz metadata for files already in new format
+  - The existing filename for files already in new format
 
 Usage:
     python3 rename-library.py [--dry-run]
 """
 
 import argparse
+import filecmp
 import re
-import sys
 from pathlib import Path
 
 import puz
@@ -119,7 +119,6 @@ def main():
     renamed = 0
     skipped = 0
     dupes = 0
-    errors = 0
     seen_targets = set()  # track targets to detect duplicates in dry-run
 
     for f in puz_files:
@@ -159,12 +158,16 @@ def main():
             skipped += 1
             continue
 
-        # Collision check (on-disk or already claimed by an earlier rename)
+        # Collision — check if files are identical before removing
         if (new_path.exists() and new_path != f) or new_path in seen_targets:
-            print(f"  DUPE: {f.name} → {new_name} (duplicate, removing)")
-            if not args.dry_run:
-                f.unlink()
-            dupes += 1
+            if new_path.exists() and filecmp.cmp(f, new_path, shallow=False):
+                print(f"  DUPE: {f.name} (identical content, removing)")
+                if not args.dry_run:
+                    f.unlink()
+                dupes += 1
+            else:
+                print(f"  CONFLICT: {f.name} → {new_name} (different content, keeping both)")
+                skipped += 1
             continue
 
         seen_targets.add(new_path)
@@ -178,7 +181,7 @@ def main():
         renamed += 1
 
     action = "Would rename" if args.dry_run else "Renamed"
-    print(f"\n{action} {renamed} file(s), skipped {skipped}, dupes removed {dupes}, errors {errors}")
+    print(f"\n{action} {renamed} file(s), skipped {skipped}, dupes removed {dupes}")
 
 
 if __name__ == "__main__":

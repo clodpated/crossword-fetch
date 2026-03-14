@@ -1,26 +1,15 @@
 """Tests for the pure functions in rename-library.py."""
 
-import importlib.util
-import sys
-from pathlib import Path
-
 import pytest
 
-# Load rename-library.py as a module despite the hyphenated filename
-_spec = importlib.util.spec_from_file_location(
-    "rename_library",
-    Path(__file__).resolve().parent.parent / "rename-library.py",
+from rename_library import (
+    safe_filename,
+    extract_code_and_date,
+    extract_prefix_from_new_format,
+    build_new_name,
+    extract_date_from_filename,
+    CODE_TO_PREFIX,
 )
-_mod = importlib.util.module_from_spec(_spec)
-sys.modules["rename_library"] = _mod
-_spec.loader.exec_module(_mod)
-
-safe_filename = _mod.safe_filename
-extract_code_and_date = _mod.extract_code_and_date
-extract_prefix_from_new_format = _mod.extract_prefix_from_new_format
-build_new_name = _mod.build_new_name
-extract_date_from_filename = _mod.extract_date_from_filename
-CODE_TO_PREFIX = _mod.CODE_TO_PREFIX
 
 
 # ---------------------------------------------------------------------------

@@ -1,24 +1,10 @@
 """Tests for the pure functions in fetch-extras.py."""
 
-import importlib.util
-import sys
 from datetime import datetime
-from pathlib import Path
 
 import pytest
 
-# Load fetch-extras.py as a module despite the hyphenated filename
-_spec = importlib.util.spec_from_file_location(
-    "fetch_extras",
-    Path(__file__).resolve().parent.parent / "fetch-extras.py",
-)
-_mod = importlib.util.module_from_spec(_spec)
-sys.modules["fetch_extras"] = _mod
-_spec.loader.exec_module(_mod)
-
-safe_filename = _mod.safe_filename
-puz_filename = _mod.puz_filename
-file_exists_for = _mod.file_exists_for
+from fetch_extras import safe_filename, puz_filename, file_exists_for
 
 
 # ---------------------------------------------------------------------------
@@ -80,7 +66,6 @@ class TestPuzFilename:
 # ---------------------------------------------------------------------------
 class TestFileExistsFor:
     def test_matching_file(self, tmp_path):
-        # Create a file that matches the date and prefix
         (tmp_path / "2026-01-13 - NY Times - Title - Author.puz").touch()
         dt = datetime(2026, 1, 13)
         assert file_exists_for(tmp_path, dt, "NY Times") is True
@@ -116,3 +101,17 @@ class TestFileExistsFor:
         (tmp_path / "2026-01-13 - USA Today - Untitled - Unlisted.puz").touch()
         dt = datetime(2026, 1, 13)
         assert file_exists_for(tmp_path, dt, "USA Today") is True
+
+    def test_substring_prefix_no_false_positive(self, tmp_path):
+        """'NY Times' must NOT match a file for 'NY Times Mini'."""
+        (tmp_path / "2026-01-13 - NY Times Mini - Title - Author.puz").touch()
+        dt = datetime(2026, 1, 13)
+        assert file_exists_for(tmp_path, dt, "NY Times") is False
+
+    def test_substring_prefix_both_present(self, tmp_path):
+        """Both 'NY Times' and 'NY Times Mini' can coexist."""
+        (tmp_path / "2026-01-13 - NY Times - Title - Author.puz").touch()
+        (tmp_path / "2026-01-13 - NY Times Mini - Title - Author.puz").touch()
+        dt = datetime(2026, 1, 13)
+        assert file_exists_for(tmp_path, dt, "NY Times") is True
+        assert file_exists_for(tmp_path, dt, "NY Times Mini") is True

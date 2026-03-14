@@ -25,10 +25,8 @@ log() {
     echo "[$(date '+%H:%M:%S')] $*" >> "$LOGFILE"
 }
 
-has_puzzle() {
-    # Check if a .puz file for this date+prefix already exists
-    ls "$OUTDIR"/${DATE}*.puz 2>/dev/null | grep -q " - ${1} - "
-}
+# shellcheck source=_shared.sh
+source "$SCRIPT_DIR/_shared.sh"
 
 download() {
     local code="$1"
@@ -37,11 +35,40 @@ download() {
     local -a extra=("$@")
 
     # Skip if we already have this puzzle
-    if has_puzzle "$prefix"; then
+    if has_puzzle "$OUTDIR" "$DATE" "$prefix"; then
         return
     fi
 
-    local -a cmd=(xword-dl "$code" "${extra[@]}" -o "$OUTDIR/%Y-%m-%d - %prefix - %title - %author")
+    # ${extra[@]+...} avoids "unbound variable" on bash 3.2 when array is empty
+    local -a cmd=(xword-dl "$code" ${extra[@]+"${extra[@]}"} -o "$OUTDIR/%Y-%m-%d - %prefix - %title - %author")
+
+    log "Fetching $prefix ($code)..."
+    if "${cmd[@]}" >> "$LOGFILE" 2>&1; then
+        log "  OK: $prefix"
+    else
+        log "  FAILED: $prefix — retrying in 5s..."
+        sleep 5
+        if "${cmd[@]}" >> "$LOGFILE" 2>&1; then
+            log "  OK: $prefix (retry)"
+        else
+            log "  FAILED: $prefix (gave up)"
+        fi
+    fi
+    sleep 2
+}
+
+download_latest() {
+    # For sources that only support --latest (no -d DATE).
+    # Their files are dated by publish date, not today, so we check the
+    # whole month folder instead of anchoring to $DATE.
+    local code="$1"
+    local prefix="$2"
+
+    if ls "$OUTDIR"/*.puz 2>/dev/null | grep -qF " - ${prefix} - "; then
+        return
+    fi
+
+    local -a cmd=(xword-dl "$code" -o "$OUTDIR/%Y-%m-%d - %prefix - %title - %author")
 
     log "Fetching $prefix ($code)..."
     if "${cmd[@]}" >> "$LOGFILE" 2>&1; then
@@ -83,11 +110,11 @@ download pzmb  "Puzzmo Big"
 download tny   "New Yorker"
 download tnym  "New Yorker Mini"
 download atl   "Atlantic"
-download bill  "Billboard"
-download vox   "Vox"
+download_latest bill  "Billboard"
+download_latest vox   "Vox"
 download vult  "Vulture"
-download db    "Daily Beast"
-download wal   "The Walrus"
+download_latest db    "Daily Beast"
+download_latest wal   "The Walrus"
 download club  "Crossword Club"
 
 # --- Extras (Universal daily/Sunday + WSJ via fetch-extras.py) ---
@@ -101,23 +128,7 @@ fi
 log "=== xword-dl fetch complete ==="
 
 # Clean up filenames: fill in placeholders for empty title/author tokens
-for f in "$OUTDIR"/${DATE}*.puz; do
-    [ -f "$f" ] || continue
-    name=$(basename "$f")
-    # Pattern: "date - prefix - TITLE - AUTHOR.puz"
-    # Detect empty title (double dash) or trailing empty author
-    clean=$(echo "$name" | sed \
-        's/\( - [^-]*\) - - \(.*\)\.puz/\1 - Untitled - \2.puz/' \
-    )
-    # If author is empty (trailing " - .puz")
-    clean=$(echo "$clean" | sed 's/ - \.puz/ - Unlisted.puz/')
-    # If both were empty, title is now "Untitled" but author might still be empty
-    clean=$(echo "$clean" | sed 's/ - Untitled - \.puz/ - Untitled - Unlisted.puz/')
-    if [ "$name" != "$clean" ]; then
-        mv "$f" "$OUTDIR/$clean"
-        log "  Renamed → $clean"
-    fi
-done
+clean_filenames "$OUTDIR" "$DATE"
 
 # Count today's results
 PUZZLES=$(find "$OUTDIR" -name "${DATE} -*\.puz" 2>/dev/null | wc -l | tr -d ' ')

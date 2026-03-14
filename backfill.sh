@@ -21,6 +21,13 @@ LOGDIR="$HOME/Crosswords/logs"
 LOGFILE="$LOGDIR/backfill.log"
 mkdir -p "$LOGDIR"
 
+log() {
+    echo "[$(date '+%H:%M:%S')] $*" | tee -a "$LOGFILE"
+}
+
+# shellcheck source=_shared.sh
+source "$SCRIPT_DIR/_shared.sh"
+
 # ---------------------------------------------------------------------------
 # Parse arguments
 # ---------------------------------------------------------------------------
@@ -76,17 +83,6 @@ SOURCES=(
     "club:Crossword Club"
 )
 
-log() {
-    echo "[$(date '+%H:%M:%S')] $*" | tee -a "$LOGFILE"
-}
-
-has_puzzle() {
-    local outdir="$1"
-    local date="$2"
-    local prefix="$3"
-    ls "$outdir"/${date}*.puz 2>/dev/null | grep -q " - ${prefix} - "
-}
-
 # ---------------------------------------------------------------------------
 # Main loop
 # ---------------------------------------------------------------------------
@@ -117,20 +113,8 @@ while [[ "$current" < "$END" || "$current" == "$END" ]]; do
         sleep 1
     done
 
-    # Clean up empty title/author placeholders in today's files
-    for f in "$OUTDIR"/${current}*.puz; do
-        [ -f "$f" ] || continue
-        name=$(basename "$f")
-        clean=$(echo "$name" | sed \
-            's/\( - [^-]*\) - - \(.*\)\.puz/\1 - Untitled - \2.puz/' \
-        )
-        clean=$(echo "$clean" | sed 's/ - \.puz/ - Unlisted.puz/')
-        clean=$(echo "$clean" | sed 's/ - Untitled - \.puz/ - Untitled - Unlisted.puz/')
-        if [ "$name" != "$clean" ]; then
-            mv "$f" "$OUTDIR/$clean"
-            log "  Renamed → $clean"
-        fi
-    done
+    # Clean up empty title/author placeholders
+    clean_filenames "$OUTDIR" "$current"
 
     # Universal, WSJ, Universal Sunday via fetch-extras.py
     if uv run --with requests --with puzpy "$SCRIPT_DIR/fetch-extras.py" --date "$current" --outdir "$OUTDIR" >> "$LOGFILE" 2>&1; then

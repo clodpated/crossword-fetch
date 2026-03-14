@@ -54,12 +54,7 @@ def puz_filename(dt, prefix, title, author):
 def file_exists_for(outdir, dt, prefix):
     """Check if a .puz file for this date+prefix already exists in outdir."""
     date_str = f"{dt:%Y-%m-%d}"
-    for f in outdir.iterdir():
-        if (f.suffix == ".puz"
-                and f.name.startswith(date_str)
-                and f" {prefix} -" in f.name):
-            return True
-    return False
+    return any(outdir.glob(f"{date_str} - {prefix} - *.puz"))
 
 
 # ---------------------------------------------------------------------------
@@ -84,7 +79,7 @@ def fetch_universal_api(dt, outdir):
         r = SESSION.get(url, timeout=15)
         r.raise_for_status()
         xw = r.json()
-    except Exception as e:
+    except (requests.RequestException, ValueError) as e:
         log(f"  FAILED Universal API: {e}")
         return False
 
@@ -116,7 +111,7 @@ def fetch_universal_api(dt, outdir):
         puzzle.save(str(outpath))
         log(f"  OK Universal → {outpath.name}")
         return True
-    except Exception as e:
+    except (KeyError, ValueError, TypeError) as e:
         log(f"  FAILED Universal (parse): {e}")
         return False
 
@@ -157,12 +152,17 @@ def fetch_herbach(key, dt, outdir):
             tmp = outdir / f".tmp-{key}.puz"
             tmp.write_bytes(r.content)
             try:
-                p = puz.read(str(tmp))
-                fname = puz_filename(dt, label, p.title, p.author)
+                try:
+                    p = puz.read(str(tmp))
+                    fname = puz_filename(dt, label, p.title, p.author)
+                except Exception:
+                    fname = puz_filename(dt, label, "", "")
+                final = outdir / fname
+                tmp.rename(final)
             except Exception:
-                fname = puz_filename(dt, label, "", "")
-            final = outdir / fname
-            tmp.rename(final)
+                # Clean up temp file if rename or anything else fails
+                tmp.unlink(missing_ok=True)
+                raise
             log(f"  OK {label} → {final.name}")
             return True
         elif r.status_code == 404:

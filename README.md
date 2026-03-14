@@ -234,6 +234,14 @@ Three sources need special handling that xword-dl doesn't provide:
 - **WSJ** — Not in xword-dl. Available as direct `.puz` downloads from herbach.dnsalias.com.
 - **Universal Sunday** — Same as WSJ, published Sundays only.
 
+## Running tests
+
+```bash
+uv run --with puzpy --with pytest pytest tests/ -v
+```
+
+Tests cover the pure functions in `fetch-extras.py` and `rename-library.py` — filename generation, format detection, and file existence checks. No network calls or real filesystem changes.
+
 ## License
 
 MIT

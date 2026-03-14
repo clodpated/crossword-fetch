@@ -4,7 +4,7 @@ Automated daily `.puz` crossword puzzle downloader. A companion to [xword-dl](ht
 
 ## What it does
 
-- **`fetch-crosswords.sh`** — Runs daily (via cron, launchd, etc.), downloads puzzles from all sources into monthly folders (`~/Crosswords/2026-03/`). Uses a stamp file so it only downloads once per day even if triggered hourly.
+- **`fetch-crosswords.sh`** — Runs hourly (via cron, launchd, etc.), downloads puzzles from all sources into monthly folders (`~/Crosswords/2026-03/`). Skips any source whose puzzle already exists, so repeated runs only fetch what's still missing.
 - **`fetch-extras.py`** — Downloads puzzles that xword-dl can't reliably handle: Universal (API user-agent workaround), WSJ, and Universal Sunday.
 - **`backfill.sh`** — Downloads historical puzzles for a date range. Skips anything already downloaded.
 - **`rename-library.py`** — Bulk-renames `.puz` files to a consistent human-readable format.
@@ -81,7 +81,7 @@ Automated daily `.puz` crossword puzzle downloader. A companion to [xword-dl](ht
 
 ## Scheduling
 
-The script is designed to run hourly. It uses a stamp file (`logs/.fetched-YYYY-MM-DD`) so puzzles are only downloaded once per day — extra runs are no-ops. Running hourly means you catch puzzles regardless of when each publisher drops theirs.
+The script is designed to run hourly. Each run skips sources whose puzzles have already been downloaded, so repeated runs only attempt what's still missing. This means you catch puzzles regardless of when each publisher drops theirs throughout the day.
 
 ### cron (Linux / macOS)
 

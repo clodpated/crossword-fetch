@@ -5,8 +5,8 @@
 # Puzzles are saved to ~/Crosswords/YYYY-MM/ organized by month.
 # A log is written to ~/Crosswords/logs/
 #
-# Designed to run hourly via cron/launchd. Uses a stamp file to ensure
-# downloads are only attempted once per day.
+# Designed to run hourly via cron/launchd. Each source is skipped if its
+# puzzle for today already exists, so repeated runs only fetch what's missing.
 
 set -euo pipefail
 
@@ -18,37 +18,41 @@ MONTH=$(date +%Y-%m)
 OUTDIR="$HOME/Crosswords/$MONTH"
 LOGDIR="$HOME/Crosswords/logs"
 LOGFILE="$LOGDIR/$DATE.log"
-STAMP="$LOGDIR/.fetched-$DATE"
 
 mkdir -p "$OUTDIR" "$LOGDIR"
-
-# Skip if already fetched today
-if [ -f "$STAMP" ]; then
-    exit 0
-fi
 
 log() {
     echo "[$(date '+%H:%M:%S')] $*" >> "$LOGFILE"
 }
 
+has_puzzle() {
+    # Check if a .puz file for this date+prefix already exists
+    ls "$OUTDIR"/${DATE}*.puz 2>/dev/null | grep -q " - ${1} - "
+}
+
 download() {
     local code="$1"
-    local label="$2"
+    local prefix="$2"
     shift 2
     local -a extra=("$@")
 
+    # Skip if we already have this puzzle
+    if has_puzzle "$prefix"; then
+        return
+    fi
+
     local -a cmd=(xword-dl "$code" "${extra[@]}" -o "$OUTDIR/%Y-%m-%d - %prefix - %title - %author")
 
-    log "Fetching $label ($code)..."
+    log "Fetching $prefix ($code)..."
     if "${cmd[@]}" >> "$LOGFILE" 2>&1; then
-        log "  OK: $label"
+        log "  OK: $prefix"
     else
-        log "  FAILED: $label — retrying in 5s..."
+        log "  FAILED: $prefix — retrying in 5s..."
         sleep 5
         if "${cmd[@]}" >> "$LOGFILE" 2>&1; then
-            log "  OK: $label (retry)"
+            log "  OK: $prefix (retry)"
         else
-            log "  FAILED: $label (gave up)"
+            log "  FAILED: $prefix (gave up)"
         fi
     fi
     sleep 2
@@ -57,18 +61,18 @@ download() {
 log "=== xword-dl fetch started ==="
 
 # --- NYT (requires authentication) ---
-download nyt   "New York Times"
-download nytm  "New York Times Mini"
-download nytd  "New York Times Midi"
-download nytv  "New York Times Variety" -d today
+download nyt   "NY Times"
+download nytm  "NY Times Mini"
+download nytd  "NY Times Midi"
+download nytv  "NY Times Variety" -d today
 
 # --- Major US Dailies (free) ---
-download lat   "Los Angeles Times"
-download latm  "Los Angeles Times Mini"
+download lat   "LA Times"
+download latm  "LA Times Mini"
 download usa   "USA Today"
 # uni handled by fetch-extras.py (xword-dl blocked by user-agent filter)
 download nd    "Newsday"
-download wp    "Washington Post"
+download wp    "WaPo"
 download pop   "Daily Pop"
 
 # --- Puzzmo ---
@@ -76,13 +80,13 @@ download pzm   "Puzzmo"
 download pzmb  "Puzzmo Big"
 
 # --- Weekly / Periodic ---
-download tny   "The New Yorker"
-download tnym  "The New Yorker Mini"
-download atl   "The Atlantic"
+download tny   "New Yorker"
+download tnym  "New Yorker Mini"
+download atl   "Atlantic"
 download bill  "Billboard"
 download vox   "Vox"
 download vult  "Vulture"
-download db    "The Daily Beast"
+download db    "Daily Beast"
 download wal   "The Walrus"
 download club  "Crossword Club"
 
@@ -118,11 +122,5 @@ done
 # Count today's results
 PUZZLES=$(find "$OUTDIR" -name "${DATE} -*\.puz" 2>/dev/null | wc -l | tr -d ' ')
 log "Downloaded $PUZZLES puzzle(s) for $DATE"
-
-# Mark today as fetched so hourly runs skip
-touch "$STAMP"
-
-# Clean up stamp files older than 30 days
-find "$LOGDIR" -name '.fetched-*' -mtime +30 -delete 2>/dev/null
 
 echo "Downloaded $PUZZLES puzzle(s) for $DATE"

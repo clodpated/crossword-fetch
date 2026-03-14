@@ -59,11 +59,17 @@ Automated daily `.puz` crossword puzzle downloader. A companion to [xword-dl](ht
    ```bash
    xword-dl nyt --authenticate
    ```
-   Or manually add your `NYT-S` cookie to `~/.config/xword-dl/xword-dl.yaml`:
-   ```yaml
-   nyt:
-     NYT_S: "your-cookie-value"
-   ```
+   If that doesn't work, you can manually grab the cookie from your browser:
+   1. Log in to [nytimes.com/crosswords](https://www.nytimes.com/crosswords) with your NYT subscription
+   2. Open Developer Tools (`F12` or `Cmd+Opt+I` / `Ctrl+Shift+I`)
+   3. Go to the **Application** tab (Chrome/Edge) or **Storage** tab (Firefox)
+   4. Under **Cookies**, select `https://www.nytimes.com`
+   5. Find the cookie named `NYT-S` and copy its **Value**
+   6. Add it to `~/.config/xword-dl/xword-dl.yaml`:
+      ```yaml
+      nyt:
+        NYT_S: "your-cookie-value"
+      ```
 
 3. **Test it:**
    ```bash
